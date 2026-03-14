@@ -12,6 +12,7 @@
 #include "HTTPS.h"
 #include "JPEG.h"
 #include "NWSAlerts.h"
+#include "NWSForecast.h"
 
 #include <Arduino_GFX_Library.h>
 
@@ -80,13 +81,43 @@ static const CityMark LOCAL_CITIES[] = {
   { 38.7172f, -105.1364f, "Victor" },
 };
 
+// Regional mode: major Colorado reference cities
+// (Victor is already shown as the Local crosshair — not repeated here)
 static const CityMark REGIONAL_CITIES[] = {
   { 39.7392f, -104.9903f, "Denver"    },
   { 40.5853f, -105.0844f, "Ft Collins"},
   { 38.8339f, -104.8214f, "C.Springs" },
   { 38.2544f, -104.6091f, "Pueblo"    },
   { 39.0639f, -108.5506f, "Gr.Jct"   },
-  { 38.7172f, -105.1364f, "Victor"    },
+};
+
+// Wide mode: major US cities — latlonToPixel clamps any that fall outside the view
+static const CityMark WIDE_CITIES[] = {
+  { 47.6062f, -122.3321f, "Seattle"   },
+  { 45.5051f, -122.6750f, "Portland"  },
+  { 37.7749f, -122.4194f, "S.F."      },
+  { 34.0522f, -118.2437f, "L.A."      },
+  { 36.1699f, -115.1398f, "Las Vegas" },
+  { 33.4484f, -112.0740f, "Phoenix"   },
+  { 43.6187f, -116.2146f, "Boise"     },
+  { 40.7608f, -111.8910f, "SLC"       },
+  { 39.7392f, -104.9903f, "Denver"    },
+  { 35.0844f, -106.6504f, "Albuqrq"  },
+  { 41.2565f,  -95.9345f, "Omaha"     },
+  { 39.0997f,  -94.5786f, "K.City"    },
+  { 44.9778f,  -93.2650f, "Minneap."  },
+  { 41.8781f,  -87.6298f, "Chicago"   },
+  { 35.4676f,  -97.5164f, "OKC"       },
+  { 32.7767f,  -96.7970f, "Dallas"    },
+  { 29.7604f,  -95.3698f, "Houston"   },
+  { 35.1495f,  -90.0490f, "Memphis"   },
+  { 36.1627f,  -86.7816f, "Nashville" },
+  { 38.6270f,  -90.1994f, "St.Louis"  },
+  { 33.7490f,  -84.3880f, "Atlanta"   },
+  { 38.9072f,  -77.0369f, "D.C."      },
+  { 40.7128f,  -74.0060f, "New York"  },
+  { 42.3601f,  -71.0589f, "Boston"    },
+  { 25.7617f,  -80.1918f, "Miami"     },
 };
 
 static bool latlonToPixel(float cityLat, float cityLon,
@@ -150,6 +181,8 @@ static void buildRadarUrl(char *buf, size_t buflen, float lat, float lon,
 static void showModeStatus() {
   if (nr_mode_idx == NWS_ALERTS_MODE) {
     showStatus("Mode: NWS Alerts");
+  } else if (nr_mode_idx == NWS_FORECAST_MODE) {
+    showStatus("Mode: NWS Forecast");
   } else {
     char msg[48];
     snprintf(msg, sizeof(msg), "NEXRAD %s", ZOOM_LEVELS[nr_mode_idx].name);
@@ -291,9 +324,10 @@ void loop() {
     }
   }
 
-  unsigned long currentInterval = (nr_mode_idx == NWS_ALERTS_MODE)
-      ? NWS_ALERTS_INTERVAL
-      : RADAR_INTERVAL;
+  unsigned long currentInterval;
+  if      (nr_mode_idx == NWS_ALERTS_MODE)   currentInterval = NWS_ALERTS_INTERVAL;
+  else if (nr_mode_idx == NWS_FORECAST_MODE) currentInterval = NWS_FORECAST_INTERVAL;
+  else                                        currentInterval = RADAR_INTERVAL;
 
   if ((last_update == 0) || (millis() - last_update > currentInterval)) {
     Serial.printf("Heap: %d, PSRAM: %d\n", ESP.getFreeHeap(), ESP.getFreePsram());
@@ -307,6 +341,18 @@ void loop() {
       } else {
         showStatus("NWS fetch failed - retrying in 60s");
         last_update = millis() - NWS_ALERTS_INTERVAL + 60000UL;
+      }
+
+    } else if (nr_mode_idx == NWS_FORECAST_MODE) {
+      showStatus("Fetching NWS forecast...");
+      if (nwsFetchAndDisplayForecast(nr_lat, nr_lon)) {
+        last_update = millis();
+        identity_last_fetch = millis() / 1000UL;
+        showStatus("Mode: NWS Forecast");
+        drawTimestamp();
+      } else {
+        showStatus("Forecast failed - retrying in 60s");
+        last_update = millis() - NWS_FORECAST_INTERVAL + 60000UL;
       }
 
     } else {
@@ -331,7 +377,7 @@ void loop() {
         identity_last_fetch = millis() / 1000UL;
         drawTimestamp();
 
-        // Draw city markers for Local and Regional modes
+        // Draw city markers
         if (nr_mode_idx == 0) {
           drawCityOverlay(lat, lon, ZOOM_LEVELS[0].degrees,
                           LOCAL_CITIES, 1, true);
@@ -340,15 +386,15 @@ void loop() {
                           REGIONAL_CITIES,
                           sizeof(REGIONAL_CITIES) / sizeof(REGIONAL_CITIES[0]),
                           false);
+        } else if (nr_mode_idx == 2) {
+          drawCityOverlay(lat, lon, ZOOM_LEVELS[2].degrees,
+                          WIDE_CITIES,
+                          sizeof(WIDE_CITIES) / sizeof(WIDE_CITIES[0]),
+                          false);
         }
 
-        const char *zoomLabel = ZOOM_LEVELS[nr_mode_idx].name;
-        int labelW = strlen(zoomLabel) * 6 + 4;
-        gfx->fillRect(gfx->width() - labelW - 2, 22, labelW + 2, 10, RGB565_BLACK);
-        gfx->setTextColor(0x07FF);
-        gfx->setTextSize(1);
-        gfx->setCursor(gfx->width() - labelW, 23);
-        gfx->print(zoomLabel);
+        // Clear status bar to show mode name
+        showModeStatus();
 
       } else {
         char errMsg[60];

@@ -8,7 +8,7 @@
 extern Arduino_GFX *gfx;
 
 // ---------------------------------------------------------------------------
-// Zoom level definitions (radar modes 0–2, alerts mode 3)
+// Zoom level definitions (radar modes 0–2, alerts mode 3, forecast mode 4)
 // ---------------------------------------------------------------------------
 struct ZoomLevel {
   const char *name;
@@ -22,8 +22,9 @@ static const ZoomLevel ZOOM_LEVELS[] = {
 };
 static const int NUM_ZOOM_LEVELS = 3;
 
-#define NWS_ALERTS_MODE  (NUM_ZOOM_LEVELS)      // 3
-#define NUM_MODES        (NUM_ZOOM_LEVELS + 1)  // 4 total
+#define NWS_ALERTS_MODE   (NUM_ZOOM_LEVELS)      // 3
+#define NWS_FORECAST_MODE (NUM_ZOOM_LEVELS + 1)  // 4
+#define NUM_MODES         (NUM_ZOOM_LEVELS + 2)  // 5 total
 
 // ---------------------------------------------------------------------------
 // Persisted settings
@@ -187,6 +188,9 @@ static void nrHandleRoot() {
   html += "<option value='" + String(NWS_ALERTS_MODE) + "'";
   if (nr_mode_idx == NWS_ALERTS_MODE) html += " selected";
   html += ">&#128680; NWS Alerts</option>";
+  html += "<option value='" + String(NWS_FORECAST_MODE) + "'";
+  if (nr_mode_idx == NWS_FORECAST_MODE) html += " selected";
+  html += ">&#127783; NWS Forecast</option>";
 
   html += "</select>"
     "<label>Latitude (decimal degrees, e.g. 38.8894):</label>"
@@ -238,7 +242,8 @@ static void nrHandleSave() {
   nrSaveSettings(ssid.c_str(), pass.c_str(), mode, lat.c_str(), lon.c_str());
 
   const char *modeName;
-  if (mode == NWS_ALERTS_MODE) modeName = "NWS Alerts";
+  if (mode == NWS_ALERTS_MODE)   modeName = "NWS Alerts";
+  else if (mode == NWS_FORECAST_MODE) modeName = "NWS Forecast";
   else modeName = ZOOM_LEVELS[mode].name;
 
   String html =
