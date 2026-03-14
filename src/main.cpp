@@ -31,6 +31,7 @@
 #include "JPEG.h"
 #include "NWSAlerts.h"
 #include "NWSForecast.h"
+#include "SunMoon.h"
 
 #include <Arduino_GFX_Library.h>
 
@@ -233,11 +234,10 @@ static void buildRadarUrl(char *buf, size_t buflen, float lat, float lon,
 // Mode name for status bar
 // ---------------------------------------------------------------------------
 static void showModeStatus() {
-  if (nr_mode_idx == NWS_ALERTS_MODE) {
-    showStatus("Mode: NWS Alerts");
-  } else if (nr_mode_idx == NWS_FORECAST_MODE) {
-    showStatus("Mode: NWS Forecast");
-  } else {
+  if      (nr_mode_idx == NWS_ALERTS_MODE)   showStatus("Mode: NWS Alerts");
+  else if (nr_mode_idx == NWS_FORECAST_MODE) showStatus("Mode: NWS Forecast");
+  else if (nr_mode_idx == SUN_MOON_MODE)     showStatus("Mode: Sun & Moon");
+  else {
     char msg[48];
     snprintf(msg, sizeof(msg), "NEXRAD %s", ZOOM_LEVELS[nr_mode_idx].name);
     showStatus(msg);
@@ -393,6 +393,7 @@ void loop() {
   unsigned long currentInterval;
   if      (nr_mode_idx == NWS_ALERTS_MODE)   currentInterval = NWS_ALERTS_INTERVAL;
   else if (nr_mode_idx == NWS_FORECAST_MODE) currentInterval = NWS_FORECAST_INTERVAL;
+  else if (nr_mode_idx == SUN_MOON_MODE)     currentInterval = SUN_MOON_INTERVAL;
   else                                        currentInterval = RADAR_INTERVAL;
 
   // ── Fetch and display ─────────────────────────────────────────────────────
@@ -422,6 +423,19 @@ void loop() {
       } else {
         showStatus("Forecast failed - retrying in 60s");
         last_update = millis() - NWS_FORECAST_INTERVAL + 60000UL;
+      }
+
+    } else if (nr_mode_idx == SUN_MOON_MODE) {
+      // ── Sun & Moon ───────────────────────────────────────────────────────
+      showStatus("Calculating Sun & Moon...");
+      if (sunMoonFetchAndDisplay(nr_lat, nr_lon)) {
+        last_update = millis();
+        identity_last_fetch = millis() / 1000UL;
+        showStatus("Mode: Sun & Moon");
+        drawTimestamp();
+      } else {
+        showStatus("Sun/Moon failed - retrying in 60s");
+        last_update = millis() - SUN_MOON_INTERVAL + 60000UL;
       }
 
     } else {
