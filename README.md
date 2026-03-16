@@ -8,10 +8,15 @@ Pulls the NOAA/NWS NEXRAD composite reflectivity mosaic directly onto a 320×240
 
 ## Screenshots
 
-| Wide (~480 mi) | Regional (~240 mi) | NWS Alerts |
-|:-:|:-:|:-:|
-| ![Wide radar view showing storm system moving in from the north](IMG_20260314_034232.jpg) | ![Regional view with Colorado city markers](IMG_20260314_034305.jpg) | ![NWS Alert — Red Flag Warning issued by NWS Pueblo CO](IMG_20260314_034247.jpg) |
-| Storm system visible upper-right, state borders on dark navy | City dots: Ft Collins, Denver, Gr.Jct, Victor, C.Springs, Pueblo | Live Red Flag Warning from NWS Pueblo CO |
+| Local (~100 mi) | Regional (~240 mi) |
+|:-:|:-:|
+| ![Local radar — storm system over Colorado, orange crosshair on home location](IMG_20260315_133708.jpg) | ![Regional radar — storm corridor along Front Range with city markers](IMG_20260315_133716.jpg) |
+| Storm moving through — orange crosshair on home location | Storm corridor along the Front Range; Ft Collins, Denver, C.Springs, Pueblo, Gr.Jct labeled |
+
+| Wide (~480 mi) | NWS Alerts |
+|:-:|:-:|
+| ![Wide view — multi-state radar showing storm system east of Colorado](IMG_20260315_133725.jpg) | ![NWS Alert — Red Flag Warning issued by NWS Pueblo CO](IMG_20260314_034247.jpg) |
+| Multi-state view; Boise, SLC, Las Vegas, Phoenix, Denver, Albuqrq, Dallas labeled | Live Red Flag Warning from NWS Pueblo CO |
 
 ---
 
